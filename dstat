@@ -1474,13 +1474,30 @@ class dstat_tcp(dstat):
 
 class dstat_time(dstat):
     def __init__(self):
+        import locale
+        try:
+            locale.setlocale(locale.LC_ALL, '')
+        except locale.Error:
+            pass
         self.name = 'system'
-        self.timefmt = os.getenv('DSTAT_TIMEFMT') or '%d-%m %H:%M:%S'
+        self.timefmt = os.getenv('DSTAT_TIMEFMT') or locale.nl_langinfo(locale.D_T_FMT) or '%d-%m %H:%M:%S'
         self.type = 's'
-        if op.debug:
-            self.width = len(time.strftime(self.timefmt, time.localtime())) + 4
-        else:
+        try:
+            width = 0
+            import unicodedata
+            east_asian_widths = { 'W': 2, 'F': 2, 'Na': 1, 'H': 1, 'N': 1, 'A': 1 }
+            (lang, encoding) = locale.getlocale()
+            for char in time.strftime(self.timefmt, time.localtime()).decode(encoding):
+                try:
+                    c = unicodedata.east_asian_width(char)
+                    width += east_asian_widths[c]
+                except:
+                    width += 1
+            self.width = width
+        except:
             self.width = len(time.strftime(self.timefmt, time.localtime()))
+        if op.debug:
+            self.width = self.width + 4
         self.scale = 0
         self.vars = ('time',)
 
